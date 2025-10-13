@@ -1,0 +1,36 @@
+# Web Scraping
+scrapy==2.11.0
+playwright==1.40.0
+beautifulsoup4==4.12.2
+requests==2.31.0
+selenium==4.15.2
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+alembic==1.13.0
+
+# NLP & ML
+google-generativeai==0.3.1
+spacy==3.7.2
+langdetect==1.0.9
+
+# Data Processing
+pandas==2.1.4
+numpy==1.26.2
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.2
+pydantic-settings==2.1.0
+schedule==1.2.0
+loguru==0.7.2
+
+# YouTube
+youtube-transcript-api==0.6.1
+pytube==15.0.0
+yt-dlp==2025.09.26
+# Social Media
+tweepy==4.14.0
+pinecone-client==2.2.4
+weaviate-client==3.25.3
