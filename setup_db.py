@@ -2,6 +2,7 @@ from config.db_config import engine, Base
 from database.models import Source, Chunk, Narrative, ScrapingLog
 from loguru import logger
 
+
 def create_tables():
     """Create all database tables"""
     try:
@@ -10,6 +11,7 @@ def create_tables():
     except Exception as e:
         logger.error(f"❌ Error creating database tables: {e}")
         raise
+
 
 if __name__ == "__main__":
     create_tables()
