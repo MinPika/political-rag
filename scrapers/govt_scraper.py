@@ -123,3 +123,12 @@ class GovernmentScraper(BaseScraper):
             if rows_data:
                 tables_data.append(rows_data)
         return tables_data
+    
+    def extract_images(self, soup):
+        images = []
+        for img in soup.find_all('img', src=True):
+            img_url = img['src']
+            if not img_url.startswith('http'):
+                img_url = f"{self.base_url}{img_url}"
+            images.append(img_url)
+        return images
