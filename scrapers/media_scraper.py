@@ -72,56 +72,56 @@ class MediaScraper(BaseScraper):
     def scrape_media_source(self, source_name: str, config: Dict) -> List[Dict]:
         """Scrape a single media source"""
         sources = []
-        html = self.fetch_page(config["url"])
+        visited_articles = set()
+        pages_to_scrape = [config["url"]]
         
-        if not html:
-            return sources
-        
-        soup = self.parse_html(html)
-        selectors = config["selectors"]
-        
-        # Find all article containers
-        articles = soup.find_all(class_=re.compile(r'story|article|news'))[:10]  # Limit to 10 articles
-        
-        if not articles:
-            # Fallback: try generic selectors
-            articles = soup.find_all(['article', 'div'], class_=re.compile(r'.*'))[:10]
-        
-        for article in articles:
-            try:
-                # Extract title
-                title_elem = article.find(['h1', 'h2', 'h3', 'h4'])
-                if not title_elem:
-                    continue
-                
-                title = title_elem.get_text(strip=True)
-                
-                # Extract link
-                link_elem = article.find('a', href=True)
-                if not link_elem:
-                    continue
-                
-                article_url = link_elem['href']
-                if not article_url.startswith('http'):
-                    article_url = urljoin(config["url"], article_url)
-                
-                # Fetch full article
-                article_html = self.fetch_page(article_url)
-                if not article_html:
-                    continue
-                
-                article_soup = self.parse_html(article_html)
-                
-                # Extract article body
-                content_div = (article_soup.find('div', class_=re.compile(r'story|article|content')) or
-                             article_soup.find('article'))
-                
-                if not content_div:
-                    continue
-                
-                content = content_div.get_text(separator='\n', strip=True)
-                
-                if len(content) > 100:  # Only save substantial content
+        while pages_to_scrape: 
+            page_url = pages_to_scrape.pop(0)
+            html = self.fetch_page(page_url)
+            if not html:
+                continue
+            
+            soup = self.parse_html(html)
+            
+            # Find articles (try multiple generic selectors)
+            articles = soup.find_all(['article', 'div'], class_=re.compile(r'story|article|news|card'))[:15]
+
+            for article in articles:
+                try:
+                    # Extract title
+                    title_elem = article.find(['h1', 'h2', 'h3', 'h4'])
+                    if not title_elem:
+                        continue
+                    title = title_elem.get_text(strip=True)
+
+                    # Extract link
+                    link_elem = article.find('a', href=True)
+                    if not link_elem:
+                        continue
+                    article_url = link_elem['href']
+                    if not article_url.startswith('http'):
+                        article_url = urljoin(config["url"], article_url)
+                    
+                    if article_url in visited_articles:
+                        continue
+                    visited_articles.add(article_url)
+
+                    # Fetch full article page
+                    article_html = self.fetch_page(article_url)
+                    if not article_html:
+                        continue
+
+                    article_soup = self.parse_html(article_html)
+                    content_div = (article_soup.find('div', class_=re.compile(r'story|article|content')) or
+                                   article_soup.find('article'))
+                    if not content_div:
+                        continue
+
+                    content = content_div.get_text(separator='\n', strip=True)
+                    if len(content) < 50:
+                        continue
+
+                    # Create source dict with existing structure
                     source = self.create_source_dict(
                         url=article_url,
                         title=title,
@@ -130,11 +130,27 @@ class MediaScraper(BaseScraper):
                         domain=config["domain"]
                     )
                     source["raw_content"] = content
+
+                    # Enhanced metadata
+                    source["metadata"] = {
+                        "published_date": self.extract_published_date(article_soup),
+                        "author": self.extract_author(article_soup),
+                        "images": self.extract_images(article_soup, config["url"]),
+                        "videos": self.extract_videos(article_soup),
+                        "categories": self.extract_categories(article_soup),
+                    }
+
                     sources.append(source)
                     logger.info(f"✅ Scraped: {title[:50]}...")
-            
-            except Exception as e:
-                logger.warning(f"Error scraping article from {source_name}: {e}")
-                continue
-        
+
+                except Exception as e:
+                    logger.warning(f"Error scraping article from {source_name}: {e}")
+                    continue
+
+            # Optional: Add next page links for pagination
+            next_links = self.extract_pagination_links(soup, config["url"])
+            for link in next_links:
+                if link not in pages_to_scrape:
+                    pages_to_scrape.append(link)
+
         return sources
