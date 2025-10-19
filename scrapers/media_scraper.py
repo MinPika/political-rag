@@ -164,3 +164,40 @@ class MediaScraper(BaseScraper):
         if meta_time and meta_time.get('content'):
             return meta_time['content']
         return None
+    
+    def extract_author(self, soup):
+        author_tag = soup.find('meta', attrs={'name':'author'}) or soup.find('span', class_=re.compile(r'author'))
+        if author_tag:
+            return author_tag.get('content') or author_tag.get_text(strip=True)
+        return None
+    
+    def extract_images(self, soup, base_url):
+        images = []
+        for img in soup.find_all('img', src=True):
+            img_url = img['src']
+            if not img_url.startswith('http'):
+                img_url = urljoin(base_url, img_url)
+            images.append(img_url)
+        return images
+    
+    def extract_videos(self, soup):
+        videos = []
+        for iframe in soup.find_all('iframe', src=True):
+            if 'youtube' in iframe['src'] or 'vimeo' in iframe['src']:
+                videos.append(iframe['src'])
+        return videos
+    
+    def extract_categories(self, soup):
+        categories = []
+        for cat in soup.select('a.category, span.category, div.tags a'):
+            categories.append(cat.get_text(strip=True))
+        return list(set(categories))
+    
+    def extract_pagination_links(self, soup, base_url):
+        links = []
+        for a in soup.find_all('a', href=True, string=re.compile(r'next|older|>', re.I)):
+            href = a['href']
+            if not href.startswith('http'):
+                href = urljoin(base_url, href)
+            links.append(href)
+        return links
