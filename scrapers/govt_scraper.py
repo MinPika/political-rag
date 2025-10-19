@@ -132,3 +132,9 @@ class GovernmentScraper(BaseScraper):
                 img_url = f"{self.base_url}{img_url}"
             images.append(img_url)
         return images
+    
+    def extract_breadcrumbs(self, soup):
+        breadcrumbs = []
+        for bc in soup.select('nav.breadcrumb a'):
+            breadcrumbs.append(bc.get_text(strip=True))
+        return breadcrumbs
