@@ -108,3 +108,18 @@ class GovernmentScraper(BaseScraper):
         if phones:
             contacts['phone_numbers'] = list(set(phones))
         return contacts
+    
+    def extract_tables(self, soup):
+        tables_data = []
+        tables = soup.find_all('table')
+        for table in tables:
+            headers = [th.get_text(strip=True) for th in table.find_all('th')]
+            rows_data = []
+            for tr in table.find_all('tr'):
+                cells = [td.get_text(strip=True) for td in tr.find_all('td')]
+                if cells:
+                    row_dict = dict(zip(headers, cells)) if headers else {"row": cells}
+                    rows_data.append(row_dict)
+            if rows_data:
+                tables_data.append(rows_data)
+        return tables_data
