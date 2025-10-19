@@ -98,3 +98,13 @@ class GovernmentScraper(BaseScraper):
                 file_title = link.get_text(strip=True) or "Government Document"
                 files.append((file_url, file_title, ext))
         return files
+    
+    def extract_contacts(self, content_text):
+        contacts = {}
+        emails = re.findall(r'[\w\.-]+@[\w\.-]+', content_text)
+        if emails:
+            contacts['emails'] = list(set(emails))
+        phones = re.findall(r'\+?\d[\d\s\-]{7,}\d', content_text)
+        if phones:
+            contacts['phone_numbers'] = list(set(phones))
+        return contacts
