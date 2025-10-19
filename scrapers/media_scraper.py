@@ -154,3 +154,13 @@ class MediaScraper(BaseScraper):
                     pages_to_scrape.append(link)
 
         return sources
+    
+    def extract_published_date(self, soup):
+        time_tag = soup.find('time')
+        if time_tag:
+            return time_tag.get_text(strip=True)
+        # Check meta tags
+        meta_time = soup.find('meta', attrs={'property':'article:published_time'}) or soup.find('meta', attrs={'name':'pubdate'})
+        if meta_time and meta_time.get('content'):
+            return meta_time['content']
+        return None
