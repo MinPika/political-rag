@@ -34,3 +34,13 @@ yt-dlp==2025.09.26
 tweepy==4.14.0
 pinecone-client==2.2.4
 weaviate-client==3.25.3
+
+
+# PDF Processing
+PyMuPDF==1.23.8
+pdfplumber==0.10.3
+pytesseract==0.3.10
+Pillow==10.1.0
+camelot-py[cv]==0.11.0
+tabula-py==2.9.0
+pdf2image==1.16.3
