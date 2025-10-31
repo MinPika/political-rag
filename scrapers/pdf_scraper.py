@@ -12,6 +12,7 @@ import tempfile
 import os
 from pathlib import Path
 
+
 class SimplePDFExtractor:
     def __init__(self, ocr_lang: str = "eng+hin", output_dir: str = "pdf_extracts"):
         self.ocr_lang = ocr_lang
@@ -19,67 +20,69 @@ class SimplePDFExtractor:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         self.min_text_length = 50
-        
+
     def extract_pdfs(self, pdf_urls: List[str]):
         logger.info(f"Starting extraction for {len(pdf_urls)} PDFs")
-        
+
         for idx, pdf_url in enumerate(pdf_urls, 1):
             logger.info(f"Processing PDF {idx}/{len(pdf_urls)}")
-            
+
             try:
                 self.extract_single_pdf(pdf_url, idx)
             except Exception as e:
                 logger.error(f"Error processing PDF {idx}: {e}")
                 continue
-        
+
         logger.info(f"Extraction complete. Files saved in {self.output_dir}")
-    
+
     def extract_single_pdf(self, pdf_url: str, pdf_number: int):
         response = requests.get(pdf_url, timeout=30)
         response.raise_for_status()
-        
-        pdf_filename = pdf_url.split('/')[-1].replace('.pdf', '')
+
+        pdf_filename = pdf_url.split("/")[-1].replace(".pdf", "")
         temp_pdf_path = os.path.join(self.temp_dir, f"{pdf_filename}.pdf")
-        
-        with open(temp_pdf_path, 'wb') as f:
+
+        with open(temp_pdf_path, "wb") as f:
             f.write(response.content)
-        
-        logger.info(f"Downloaded {pdf_filename} ({len(response.content) / 1024:.1f} KB)")
-        
+
+        logger.info(
+            f"Downloaded {pdf_filename} ({len(response.content) / 1024:.1f} KB)"
+        )
+
         extracted_content = self.process_pdf(temp_pdf_path, pdf_url)
-        
+
         output_filename = f"{pdf_number:03d}_{pdf_filename}.txt"
         output_path = self.output_dir / output_filename
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
+
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(f"PDF URL: {pdf_url}\n")
             f.write(f"Filename: {pdf_filename}\n")
             f.write("=" * 80 + "\n\n")
             f.write(extracted_content)
-        
+
         logger.info(f"Saved to {output_filename}")
-        
+
         try:
             os.remove(temp_pdf_path)
         except:
             pass
-    
+
     def process_pdf(self, pdf_path: str, source_url: str) -> str:
         doc = fitz.open(pdf_path)
         total_pages = len(doc)
-        
+
         output_parts = []
         output_parts.append(f"TOTAL PAGES: {total_pages}\n")
         output_parts.append("=" * 80 + "\n\n")
-        
+
         for page_num in range(total_pages):
             page = doc[page_num]
-            
+
             text = page.get_text()
             is_digital = len(text.strip()) > self.min_text_length
-            
+
             output_parts.append(f"--- PAGE {page_num + 1} ---\n")
-            
+
             if is_digital:
                 logger.info(f"Page {page_num + 1}: Digital extraction")
                 output_parts.append(f"[EXTRACTION METHOD: Digital Text]\n\n")
@@ -88,24 +91,24 @@ class SimplePDFExtractor:
                 logger.info(f"Page {page_num + 1}: OCR extraction")
                 output_parts.append(f"[EXTRACTION METHOD: OCR]\n\n")
                 page_text = self._extract_ocr_text(page)
-            
+
             output_parts.append(page_text)
             output_parts.append("\n\n")
-            
+
             tables = self._extract_tables(pdf_path, page_num)
             if tables:
                 output_parts.append(f"\n[TABLES FOUND: {len(tables)}]\n\n")
                 for table_idx, table_text in enumerate(tables, 1):
                     output_parts.append(f"Table {table_idx}:\n{table_text}\n\n")
-        
+
         doc.close()
         return "".join(output_parts)
-    
+
     def _extract_digital_text(self, page) -> str:
         try:
             text = page.get_text("text")
             blocks = page.get_text("dict")["blocks"]
-            
+
             structured_text = []
             for block in blocks:
                 if "lines" in block:
@@ -116,49 +119,50 @@ class SimplePDFExtractor:
                             line_text += span["text"]
                         block_text.append(line_text)
                     structured_text.append(" ".join(block_text))
-            
+
             return "\n".join(structured_text) if structured_text else text
         except Exception as e:
             return page.get_text()
-    
+
     def _extract_ocr_text(self, page) -> str:
         try:
             pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
             img_data = pix.tobytes("png")
             image = Image.open(io.BytesIO(img_data))
-            
+
             text = pytesseract.image_to_string(image, lang=self.ocr_lang)
             return text
         except Exception as e:
             logger.error(f"OCR failed: {e}")
             return ""
-    
+
     def _extract_tables(self, pdf_path: str, page_num: int) -> List[str]:
         tables = []
         try:
             with pdfplumber.open(pdf_path) as pdf:
                 page = pdf.pages[page_num]
                 extracted_tables = page.extract_tables()
-                
+
                 for table in extracted_tables:
                     if table and len(table) > 1:
                         table_text = self._format_table(table)
                         tables.append(table_text)
         except:
             pass
-        
+
         return tables
-    
+
     def _format_table(self, table: List[List]) -> str:
         lines = []
         for row in table:
             cleaned_row = [str(cell).strip() if cell else "" for cell in row]
             lines.append(" | ".join(cleaned_row))
         return "\n".join(lines)
-    
+
     def cleanup(self):
         try:
             import shutil
+
             shutil.rmtree(self.temp_dir)
         except:
             pass
@@ -321,11 +325,10 @@ def main():
         "https://cdn.s3waas.gov.in/s31385974ed5904a438616ff7bdb3f7439/uploads/2025/10/17606974722369.pdf",
     ]
 
-    
     extractor = SimplePDFExtractor(output_dir="pdf_extracts")
     extractor.extract_pdfs(pdf_urls)
     extractor.cleanup()
-    
+
     print(f"\nAll extracted files are in the 'pdf_extracts' folder")
 
 
