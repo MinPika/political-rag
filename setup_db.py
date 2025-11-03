@@ -1,5 +1,5 @@
 from config.db_config import engine, Base
-from database.models import Source, Chunk, Narrative, ScrapingLog
+from database.models import Source, Chunk, Narrative, ScrapingLog, PDFExtraction
 from loguru import logger
 
 
@@ -15,3 +15,5 @@ def create_tables():
 
 if __name__ == "__main__":
     create_tables()
+
+
